@@ -1,0 +1,27 @@
+= variation
+
+* {Homepage}[https://rubygems.org/gems/variation]
+* {Documentation}[http://rubydoc.info/gems/variation/frames]
+* {Email}[mailto:jamestunnell at gmail.com]
+
+== Description
+
+Compute values that change with time (or some independent variable), using various transitions (immediate, linear, sigmoid) between values.
+
+== Features
+
+== Examples
+
+  require 'variation'
+
+== Requirements
+
+== Install
+
+  $ gem install variation
+
+== Copyright
+
+Copyright (c) 2013 James Tunnell
+
+See LICENSE.txt for details.

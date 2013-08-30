@@ -1,2 +1,7 @@
+Gemfile.lock
 doc/
 pkg/
+vendor/cache/*.gem
+.yardoc
+*~
+.project

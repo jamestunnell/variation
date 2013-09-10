@@ -2,17 +2,21 @@ module Variation
 
 # A value change event, with a value and transition.
 #
-class Change
-  attr_reader :value, :transition
-
-  def initialize value, transition = ImmediateTransition.new
-    hash_make args, Change::ARG_SPECS
+class Change < Struct.new(:new_value, :transition)
+  def length
+    transition.length
   end
-  
-  # Compare the equality of another Change object.
-  def == other
-    return (@value == other.value) &&
-    (@transition == other.transition)
+
+  def function start_value
+    transition.function start_value, new_value
+  end
+
+  def truncate_start new_length
+    Change.new(transition.
+  end
+
+  def truncate_end new_length
+    
   end
 end
 

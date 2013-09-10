@@ -1,103 +1,121 @@
 module Variation
 
 # Represent a setting that can change over time.
-# 
-# @author James Tunnell
-#
 class Profile
 
-  attr_reader :selected_range
+  attr_reader :start_value, :changes
 
-  def initialize segments
-    @segments = segments
+  def initialize start_value, changes = {}
+    @start_value = start_value
+    @changes = changes
   end
 
-  def duration
-    @segments.inject(0) {|sum,seg| sum + seg.width}
+  def length
+    length = 0
+    if @changes.any?
+      first_offset = @changes.keys.min
+      last_offset = @changes.keys.max
+      length = last_offset + @changes[last_offset].length - first_offset
+    end
+    return length
   end
 
   def domain
-    0..duration
+    0..length
   end
 
-  # Generate profile data, optionally choosing a subset of the domain.
-  # @raise [OutsideOfDomainError] if domain does not include x_range.first
-  # @raise [OutsideOfDomainError] if domain does not include x_range.last
-  # @raise [RangeNotIncreasingError] if x_range.last is <= x_range.first
-  def data step_size, x_range = domain
-    raise OutsideOfDomainError unless domain.include?(x_range.first)
-    raise OutsideOfDomainError unless domain.include?(x_range.last)
-    raise RangeNotIncreasingError if x_range.last <= x_range.first
+  # def select range
+  #   raise OutsideOfDomainError unless domain.include?(x_range.first)
+  #   raise OutsideOfDomainError unless domain.include?(x_range.last)    
+    
+  #   changes = {}
+  #   @changes.each do |offset, change|
+  #     change_end = offset + change.length
+  #     if range.include?(offset) && range.include?(change_end)
+  #       changes[offset] = change
+  #     elsif range.include?(offset)
+  #       changes[offset] = change.truncate_end(range.last - offset)
+  #     elsif range.include?(change_end)
+  #       changes[range.first] = change.truncate_start(change_end - range.first)
+  #     end
+  #   end
 
-    data = {}
+  #     changes = @changes.select do |offset, change|
+  #       range.include?(offset) || range.include?(offset + change.length)
+  #     end
+      
+  #     if changes.keys.min < range.first
 
-    i1 = segment_idx_containing_x x_range.first
-    i2 = segment_idx_containing_x x_range.last
+  #     if first_offset 
+  #     last_offset = changes.keys.max
 
-    width_so_far = @segments[0...i1].inject(0){|sum,seg| sum + seg.width}
-    x = x_range.first
+  #   end
+  #   Profile.new(@start_value, changes)
+  # end
 
-    @segments[i1..i2].each do |seg|
-      lim = width_so_far + seg.width
-      is_last = seg == @segments[i2]
-      while (is_last ? x <= lim : x < lim) && (x_range.exclude_end? ? x < x_range.last : x <= x_range.last)
-        data[x] = seg.at(x - width_so_far)
-        x += step_size
-      end
-      width_so_far = lim
+  def end_value
+    if @changes.any?
+      @changes[@changes.keys.max].end_value
+    else
+      @start_values
     end
-    
-    return data
   end
 
-  private
+  def function
+    domain_map = {}
+    if @changes.any?
+      sorted_offsets = @changes.keys.sort
 
-  def segment_idx_containing_x x
-    width_so_far = 0
-    @segments.each_index do |i|
-      seg_width = @segments[i].width
-      seg_range = width_so_far..(width_so_far + seg_width)
-      if seg_range.include?(x)
-        return i
-      end
-      width_so_far += @segments[i].width
+      functions = {
+        (-Float::INFINITY...sorted_offsets.first) => ->(x){ start_value }
+      }
+      prev_val = start_value
+
+      # add all but the last change
+      sorted_offsets[0...-1].each_index do |i|
+        offset = sorted_offsets[i]
+        change = @changes[offset]
+        transition_function = change.transition_function([offset, prev_val])
+        next_offset = sorted_offsets[i+1]
+        end_of_change = offset + change.length
+
+        if end_of_change < next_offset
+          functions[offset...end_of_change] = transition_function
+          functions[end_of_change...next_offset] = ->(x){ change.end_value }
+          prev_val = change.end_value
+        elsif end_of_change == next_offset
+          functions[offset...end_of_change] = transition_function
+          functions[end_of_change...next_offset] = ->(x){ change.end_value }
+          prev_val = change.end_value
+        else
+          functions[offset...next_offset] = transition_function
+          prev_val = transition_function.call(next_offset)
+        end
+      end 
+
+      # last change
+      offset = sorted_offsets.last
+      change = @changes[offset]
+      transition_function = change.transition_function([offset, prev_val])
+      end_of_change = offset + change.length
+
+      functions[offset...end_of_change] = transition_function
+      functions[end_of_change..Float::INFINITY] = ->(x){ change.end_value }
+    else
+      functions = {
+        (-Float::INFINITY..Float::INFINITY) => ->(x){ start_value }
+      }
     end
-    return nil
+
+    lambda do |x|
+      f = functions.find {|domain,func| domain.include?(x) }[1]
+      f.call(x)
+    end
   end
 
- # #  def clone_and_collate computer_class, program_segments
- # #    new_profile = Profile.new :start_value => start_value
-    
- # #    segment_start_offset = 0.0
- # #    comp = computer_class.new(self)
-    
- # #    program_segments.each do |seg|
- # #      # figure which dynamics to keep/modify
- # #      changes = Marshal.load(Marshal.dump(value_changes))
- # #      changes.keep_if {|offset,change| seg.include?(offset) }
- # #      changes.each do |offset, change|
-	# # if(offset + change.transition.duration) > seg.last
-	# #   change.transition.duration = seg.last - offset
-	# #   change.value = comp.value_at seg.last
-	# # end
- # #      end
-      
- # #      # find & add segment start value first
- # #      value = comp.value_at seg.first
- # #      offset = segment_start_offset
- # #      new_profile.value_changes[offset] = value_change(value)
-      
- # #      # add changes to part, adjusting for segment start offset
- # #      changes.each do |offset2, change|
-	# # offset3 = (offset2 - seg.first) + segment_start_offset
-	# # new_profile.value_changes[offset3] = change
- # #      end
-      
- # #      segment_start_offset += (seg.last - seg.first)
- # #    end
-    
- # #    return new_profile
- # #  end
+  def at(x)
+    function.call(x)
+  end
 end
 
 end

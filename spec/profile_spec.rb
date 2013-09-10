@@ -2,57 +2,56 @@ require 'spec_helper'
 
 describe Profile do
   before :all do
-    @segments = [
-        Segment.new(1, ->(x){ 1}),
-        Segment.new(7, ->(x){ 2}),
-        Segment.new(2, ->(x){ 3}),
-    ]
-    @profile = Profile.new(@segments)
+    @changes = {
+      1 => LinearChange.new(:end_value => 3.5, :length => 1),
+      4 => LinearChange.new(:end_value => 1.5, :length => 2)
+    }
+    @profile = Profile.new(2.0, @changes)
   end
 
-  describe '#duration' do
-    it 'should return the sum of all segment durations' do
-      @profile.duration.should eq(10)
+  describe '#length' do
+    it 'should return difference from end of last change and first change' do
+      @profile.length.should eq(5)
     end
   end
 
   describe '#domain' do
-    it 'should return 0..duration' do
-      @profile.domain.should eq(0..@profile.duration)
+    it 'should return 0..length' do
+      @profile.domain.should eq(0..@profile.length)
     end
   end
 
-  describe '#data' do
-    context 'no subdomain range given' do
-      it 'should return all the points along all segments' do
-        expected_data = {
-          0 => 1,
-          2 => 2,
-          4 => 2,
-          6 => 2,
-          8 => 3,
-          10 => 3
-        }
-        actual_data = @profile.data(2.0)
-        actual_data.keys.should eq(expected_data.keys)
-        actual_data.values.should eq(expected_data.values)
+  describe '#function' do
+    describe '#function#arity' do
+      it 'should be 1' do
+        @profile.function.arity.should eq(1)
       end
     end
 
-    context 'subdomain given' do
-      it 'should return points along portions of segments that fall within subdomain' do
-        {
-          [2.0, 0.5..9] => { 0.5 => 1, 2.5 => 2, 4.5 => 2, 6.5 => 2, 8.5 => 3 },
-          [0.5, 0.75...1.75] => { 0.75 => 1, 1.25 => 2 },
-          [3.3, 3.2..5.2] => { 3.2 => 2 },
-        }.each do |inputs,expected_data|
-          actual_data = @profile.data(inputs[0], inputs[1])  
-          actual_data.keys.should eq(expected_data.keys)
-          actual_data.values.should eq(expected_data.values)
+    describe '#function#call' do
+      context 'given first change offset' do
+        it 'should return the start value' do
+          @profile.function.call(@profile.changes.keys.min).should eq(@profile.start_value)
+        end
+      end
+
+      context 'given value half-way between first transition' do
+        it 'should value half-way between start value and end value of first change' do
+          first_change_offset = @profile.changes.keys.min
+          first_change = @profile.changes[first_change_offset]
+          x_halfway = first_change_offset + first_change.length / 2.0
+          y_halfway = (first_change.end_value + @profile.start_value) / 2.0
+          @profile.function.call(x_halfway).should eq(y_halfway)
+        end
+      end
+
+      context 'given second change offset' do
+        it 'should return the first change''s end value' do
+          second_change_offsets = @profile.changes.keys.sort[1]
+          first_change_value = @profile.changes[@profile.changes.keys.min].end_value
+          @profile.function.call(second_change_offsets).should eq(first_change_value)
         end
       end
     end
   end
-
-  
 end

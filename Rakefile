@@ -14,8 +14,13 @@ rescue LoadError => e
   end
 end
 
+require 'rspec/core/rake_task'
+RSpec::Core::RakeTask.new
+
 task :test    => :spec
 task :default => :spec
+
+require "bundler/gem_tasks"
 
 begin
   gem 'yard', '~> 0.8'

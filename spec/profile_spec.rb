@@ -1,55 +1,148 @@
 require 'spec_helper'
+require 'spcore'
 
 describe Profile do
-  before :all do
-    @changes = {
-      1 => LinearChange.new(:end_value => 3.5, :length => 1),
-      4 => LinearChange.new(:end_value => 1.5, :length => 2)
-    }
-    @profile = Profile.new(2.0, @changes)
-  end
-
   describe '#length' do
-    it 'should return difference from end of last change and first change' do
-      @profile.length.should eq(5)
-    end
-  end
-
-  describe '#domain' do
-    it 'should return 0..length' do
-      @profile.domain.should eq(0..@profile.length)
+    it 'should return difference from last change offset and (first change offset + first change length)' do
+      Profile.new(1, 
+        2 => LinearChange.new(:end_value => 2, :length => 2),
+        8 => SigmoidChange.new(:end_value => 0, :length => 3)
+      ).length.should eq(8)
     end
   end
 
   describe '#function' do
+    before :all do
+      @profiles = [
+        Profile.new(2.0,
+          1 => LinearChange.new(:end_value => 3.5, :length => 1),
+          4 => LinearChange.new(:end_value => 1.5, :length => 2)
+        ),
+        Profile.new(1, 
+          2 => LinearChange.new(:end_value => 2, :length => 2),
+          8 => SigmoidChange.new(:end_value => 0, :length => 3)
+        ),
+        Profile.new(-20,
+          -5 => ImmediateChange.new(:end_value => 3),
+          0 => ImmediateChange.new(:end_value => 3),
+          5 => SigmoidChange.new(:end_value => 2, :length => 1)
+        )
+      ]
+    end
+
     describe '#function#arity' do
       it 'should be 1' do
-        @profile.function.arity.should eq(1)
+        @profiles.each do |profile|
+          profile.function.arity.should eq(1)
+        end
       end
     end
 
     describe '#function#call' do
       context 'given first change offset' do
-        it 'should return the start value' do
-          @profile.function.call(@profile.changes.keys.min).should eq(@profile.start_value)
+        it 'should return first change value' do
+          @profiles.each do |profile|
+            first_offset = profile.changes.keys.min
+            first_change = profile.changes[first_offset]
+            profile.function.call(first_offset).should eq(first_change.end_value)
+          end
         end
       end
 
-      context 'given value half-way between first transition' do
-        it 'should value half-way between start value and end value of first change' do
-          first_change_offset = @profile.changes.keys.min
-          first_change = @profile.changes[first_change_offset]
-          x_halfway = first_change_offset + first_change.length / 2.0
-          y_halfway = (first_change.end_value + @profile.start_value) / 2.0
-          @profile.function.call(x_halfway).should eq(y_halfway)
+      context 'changes with length == 0 (i.e. immediate changes)' do
+        before :all do
+          @profile = Profile.new(-20,
+            -5 => ImmediateChange.new(:end_value => 3),
+            0 => ImmediateChange.new(:end_value => 5),
+            5 => ImmediateChange.new(:end_value => 2)
+          )
+          @function = @profile.function
+        end
+
+        context 'given change offset' do
+          it 'should return change end value' do
+            @profile.changes.each do |offset, change|
+              @function.call(offset).should eq(change.end_value)
+            end
+          end
+        end
+
+        context 'given just before change offset' do
+          it 'should return change end value' do
+            @profile.changes.each do |offset, change|
+              @function.call(offset - 1e-5).should_not eq(change.end_value)
+            end
+          end
         end
       end
 
-      context 'given second change offset' do
-        it 'should return the first change''s end value' do
-          second_change_offsets = @profile.changes.keys.sort[1]
-          first_change_value = @profile.changes[@profile.changes.keys.min].end_value
-          @profile.function.call(second_change_offsets).should eq(first_change_value)
+      context 'changes with length > 0' do
+        before :all do
+          @profile = Profile.new(-20,
+            -5 => LinearChange.new(:end_value => 3, :length => 2),
+            0 => LinearChange.new(:end_value => 1, :length => 1),
+            5 => SigmoidChange.new(:end_value => -10, :length => 2.5),
+          )
+          @function = @profile.function
+        end
+
+        context 'given change offset' do
+          it 'should return change end value' do
+            @profile.changes.each do |offset, change|
+              @function.call(offset).should eq(change.end_value)
+            end
+          end
+        end
+
+        context 'given (change offset - change length)' do
+          context 'first change' do
+            it 'should return the start value' do
+              first_offset = @profile.changes.keys.min
+              first_change = @profile.changes[first_offset]
+              @function.call(first_offset - first_change.length).should eq(@profile.start_value)
+            end
+          end
+
+          context 'second and later changes' do
+            it 'should return end value of previous change' do
+              sorted_offsets = @profile.changes.keys.sort
+              for i in 1...sorted_offsets.count
+                offset = sorted_offsets[i]
+                change = @profile.changes[offset]
+                prev_change = @profile.changes[sorted_offsets[i-1]]
+
+                @function.call(offset - change.length).should eq(prev_change.end_value)
+              end
+            end
+          end
+        end
+
+        context 'given (change offset - 1/2 change length)' do
+          context 'first change' do
+            it 'should return 1/2 between start value and change end value' do
+              first_offset = @profile.changes.keys.min
+              first_change = @profile.changes[first_offset]
+              
+              halfway = first_offset - (first_change.length / 2.0)
+              expected = @profile.start_value + (first_change.end_value - @profile.start_value) / 2.0
+              @function.call(halfway).should eq(expected)
+            end
+          end
+
+          context 'second and later changes' do
+            it 'should return 1/2 between end value of previous change and end value of current change' do
+              sorted_offsets = @profile.changes.keys.sort
+              for i in 1...sorted_offsets.count
+                offset = sorted_offsets[i]
+                change = @profile.changes[offset]
+                prev_change = @profile.changes[sorted_offsets[i-1]]
+
+                halfway = offset - (change.length / 2.0)
+                expected = prev_change.end_value + (change.end_value - prev_change.end_value) / 2.0
+                @function.call(halfway).should eq(expected)
+              end
+            end
+          end
         end
       end
     end

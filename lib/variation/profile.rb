@@ -6,7 +6,8 @@ class Profile
   attr_reader :start_value, :changes
 
   def initialize start_value, changes = {}
-    @start_value = start_value
+    @start_value = start_value    
+    trim_changes_if_needed changes
     @changes = changes
   end
 
@@ -15,13 +16,9 @@ class Profile
     if @changes.any?
       first_offset = @changes.keys.min
       last_offset = @changes.keys.max
-      length = last_offset + @changes[last_offset].length - first_offset
+      length = (last_offset - first_offset) + @changes[first_offset].length
     end
     return length
-  end
-
-  def domain
-    0..length
   end
 
   # def select range
@@ -57,64 +54,72 @@ class Profile
     if @changes.any?
       @changes[@changes.keys.max].end_value
     else
-      @start_values
+      start_value
     end
   end
 
   def function
-    domain_map = {}
+    functions = {}
+
+    prev_val = start_value
+    prev_offset = -Float::INFINITY
+
     if @changes.any?
       sorted_offsets = @changes.keys.sort
 
-      functions = {
-        (-Float::INFINITY...sorted_offsets.first) => ->(x){ start_value }
-      }
-      prev_val = start_value
-
-      # add all but the last change
-      sorted_offsets[0...-1].each_index do |i|
+      sorted_offsets.each_index do |i|
         offset = sorted_offsets[i]
         change = @changes[offset]
-        transition_function = change.transition_function([offset, prev_val])
-        next_offset = sorted_offsets[i+1]
-        end_of_change = offset + change.length
+        start_of_transition = offset - change.length
 
-        if end_of_change < next_offset
-          functions[offset...end_of_change] = transition_function
-          functions[end_of_change...next_offset] = ->(x){ change.end_value }
-          prev_val = change.end_value
-        elsif end_of_change == next_offset
-          functions[offset...end_of_change] = transition_function
-          functions[end_of_change...next_offset] = ->(x){ change.end_value }
-          prev_val = change.end_value
-        else
-          functions[offset...next_offset] = transition_function
-          prev_val = transition_function.call(next_offset)
+        unless prev_offset == start_of_transition
+          functions[prev_offset...start_of_transition] = ConstantFunction.from_value(prev_val)
         end
-      end 
+        functions[start_of_transition...offset] = change.transition_function([start_of_transition, prev_val])
 
-      # last change
-      offset = sorted_offsets.last
-      change = @changes[offset]
-      transition_function = change.transition_function([offset, prev_val])
-      end_of_change = offset + change.length
-
-      functions[offset...end_of_change] = transition_function
-      functions[end_of_change..Float::INFINITY] = ->(x){ change.end_value }
-    else
-      functions = {
-        (-Float::INFINITY..Float::INFINITY) => ->(x){ start_value }
-      }
+        prev_val = change.end_value
+        prev_offset = offset
+      end
     end
 
+    functions[prev_offset...Float::INFINITY] = ConstantFunction.from_value(prev_val)
+
     lambda do |x|
-      f = functions.find {|domain,func| domain.include?(x) }[1]
+      result = functions.find {|domain,func| domain.include?(x) }
+      f = result[1]
       f.call(x)
     end
   end
 
   def at(x)
     function.call(x)
+  end
+
+  def data(step_size)
+    data = {}
+    if @changes.any?
+      f = function
+      domain = (@changes.keys.max - length)..length
+      domain.step(step_size) do |x|
+        data[x] = f.call(x)
+      end
+    end
+    return data
+  end
+
+  private
+
+  def trim_changes_if_needed changes
+    offsets = changes.keys.sort
+    for i in 1...offsets.count
+      prev_offset = offsets[i-1]
+      offset = offsets[i]
+      change = changes[offset]
+      
+      if (offset - change.length) < prev_offset
+        change.length = offset - prev_offset
+      end
+    end
   end
 end
 

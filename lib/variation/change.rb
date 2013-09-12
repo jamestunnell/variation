@@ -1,23 +1,20 @@
 module Variation
+class Change
+  attr_reader :length, :end_value
 
-# A value change event, with a value and transition.
-#
-class Change < Struct.new(:new_value, :transition)
-  def length
-    transition.length
+  # Pass :length and :end_value by hash. Length must be > 0.
+  def initialize hashed_args
+    self.length = hashed_args[:length]
+    self.end_value = hashed_args[:end_value]
   end
 
-  def function start_value
-    transition.function start_value, new_value
+  def length= length
+    raise NegativeLengthError if length < 0
+    @length = length
   end
 
-  def truncate_start new_length
-    Change.new(transition.
-  end
-
-  def truncate_end new_length
-    
+  def end_value= end_value
+    @end_value = end_value
   end
 end
-
 end

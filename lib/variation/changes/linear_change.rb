@@ -1,13 +1,8 @@
 module Variation
-class LinearChange
-  attr_reader :end_value, :length
-
-  # Pass :length and :end_value by Hash. Length must be > 0.
+class LinearChange < Change
+  # Pass :length and :end_value by hash. Length must be > 0.
   def initialize hashed_args
-    length = hashed_args[:length]
-    raise LengthNotPositiveError if length <= 0
-    @length = length
-    @end_value = hashed_args[:end_value]
+    super(hashed_args)
   end
 
   def transition_function start_point

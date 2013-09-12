@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe LengthNotPositiveError do
+describe NegativeLengthError do
 end
 
 describe OutsideOfDomainError do

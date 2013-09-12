@@ -1,11 +1,8 @@
 module Variation
-class ImmediateChange
-  attr_reader :end_value, :length
-
-  # Pass :end_value by Hash.
+class ImmediateChange < Change
+  # Pass :end_value by hash.
   def initialize hashed_args
-    @length = 0
-    @end_value = hashed_args[:end_value]
+    super(hashed_args.merge(:length => 0))
   end
 
   def transition_function start_point

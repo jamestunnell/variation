@@ -15,6 +15,11 @@ class Profile
     trim_changes_if_needed @changes
   end
 
+  def ==(other)
+    @start_value == other.start_value &&
+    @changes == other.changes
+  end
+
   def length
     length = 0
     if @changes.any?

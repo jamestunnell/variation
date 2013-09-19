@@ -11,3 +11,6 @@ end
 
 describe RangeNotIncreasingError do
 end
+
+describe HashedArgMissingError do
+end

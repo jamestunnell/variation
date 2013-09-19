@@ -19,5 +19,11 @@ class Change
   def end_value= end_value
     @end_value = end_value
   end
+
+  def ==(other)
+    length == other.length &&
+    end_value == other.end_value &&
+    self.class == other.class
+  end
 end
 end

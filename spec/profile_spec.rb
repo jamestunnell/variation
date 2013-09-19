@@ -32,6 +32,60 @@ describe Profile do
     end
   end
 
+  describe '#==' do
+    context 'start values are equal' do
+      context 'changes are not all equal' do
+        it 'should return false' do
+          p1 = Profile.new(:start_value => 2, :changes => {
+            1 => LinearChange.new(:end_value => 4, :length => 2)  
+          })
+          p2 = Profile.new(:start_value => 2, :changes => {
+            1 => LinearChange.new(:end_value => 5, :length => 2)  
+          })
+          (p1 == p2).should be_false
+        end
+      end
+
+      context 'changes are all equal' do
+        it 'should return true' do
+          p1 = Profile.new(:start_value => 2, :changes => {
+            1 => LinearChange.new(:end_value => 5, :length => 2)  
+          })
+          p2 = Profile.new(:start_value => 2, :changes => {
+            1 => LinearChange.new(:end_value => 5, :length => 2)  
+          })
+          (p1 == p2).should be_true
+        end
+      end
+    end
+
+    context 'start values are not equal' do
+      context 'changes are not all equal' do
+        it 'should return false' do
+          p1 = Profile.new(:start_value => 1, :changes => {
+            1 => LinearChange.new(:end_value => 4, :length => 2)  
+          })
+          p2 = Profile.new(:start_value => 2, :changes => {
+            1 => LinearChange.new(:end_value => 5, :length => 2)  
+          })
+          (p1 == p2).should be_false
+        end
+      end
+
+      context 'changes are all equal' do
+        it 'should return false' do
+          p1 = Profile.new(:start_value => 1, :changes => {
+            1 => LinearChange.new(:end_value => 5, :length => 2)  
+          })
+          p2 = Profile.new(:start_value => 2, :changes => {
+            1 => LinearChange.new(:end_value => 5, :length => 2)  
+          })
+          (p1 == p2).should be_false
+        end
+      end
+    end
+  end
+
   describe '#function' do
     before :all do
       @profiles = [

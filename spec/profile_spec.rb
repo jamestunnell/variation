@@ -2,11 +2,32 @@ require 'spec_helper'
 require 'spcore'
 
 describe Profile do
+  describe '.new' do
+    context 'no :start_value given' do
+      it 'should raise HashedArgMissingError' do
+        expect { Profile.new({}) }.to raise_error(HashedArgMissingError)
+      end
+    end
+
+    context 'no :changes given' do
+      it 'should not raise error' do
+        expect { Profile.new(:start_value => 2) }.to_not raise_error
+      end
+
+      it 'should default changes to empty hash' do
+        Profile.new(:start_value => 2).changes.should be_empty
+      end
+    end
+  end
+
   describe '#length' do
     it 'should return difference from last change offset and (first change offset + first change length)' do
-      Profile.new(1, 
-        2 => LinearChange.new(:end_value => 2, :length => 2),
-        8 => SigmoidChange.new(:end_value => 0, :length => 3)
+      Profile.new(
+        :start_value => 1, 
+        :changes => {
+          2 => LinearChange.new(:end_value => 2, :length => 2),
+          8 => SigmoidChange.new(:end_value => 0, :length => 3)
+        }
       ).length.should eq(8)
     end
   end
@@ -14,18 +35,27 @@ describe Profile do
   describe '#function' do
     before :all do
       @profiles = [
-        Profile.new(2.0,
-          1 => LinearChange.new(:end_value => 3.5, :length => 1),
-          4 => LinearChange.new(:end_value => 1.5, :length => 2)
+        Profile.new(
+          :start_value => 2.0,
+          :changes => {
+            1 => LinearChange.new(:end_value => 3.5, :length => 1),
+            4 => LinearChange.new(:end_value => 1.5, :length => 2)
+          }
         ),
-        Profile.new(1, 
-          2 => LinearChange.new(:end_value => 2, :length => 2),
-          8 => SigmoidChange.new(:end_value => 0, :length => 3)
+        Profile.new(
+          :start_value => 1,
+          :changes => {
+            2 => LinearChange.new(:end_value => 2, :length => 2),
+            8 => SigmoidChange.new(:end_value => 0, :length => 3)
+          }
         ),
-        Profile.new(-20,
-          -5 => ImmediateChange.new(:end_value => 3),
-          0 => ImmediateChange.new(:end_value => 3),
-          5 => SigmoidChange.new(:end_value => 2, :length => 1)
+        Profile.new(
+          :start_value => -20,
+          :changes => {
+            -5 => ImmediateChange.new(:end_value => 3),
+            0 => ImmediateChange.new(:end_value => 3),
+            5 => SigmoidChange.new(:end_value => 2, :length => 1)
+          }
         )
       ]
     end
@@ -51,10 +81,13 @@ describe Profile do
 
       context 'changes with length == 0 (i.e. immediate changes)' do
         before :all do
-          @profile = Profile.new(-20,
-            -5 => ImmediateChange.new(:end_value => 3),
-            0 => ImmediateChange.new(:end_value => 5),
-            5 => ImmediateChange.new(:end_value => 2)
+          @profile = Profile.new(
+            :start_value => -20,
+            :changes => {
+              -5 => ImmediateChange.new(:end_value => 3),
+              0 => ImmediateChange.new(:end_value => 5),
+              5 => ImmediateChange.new(:end_value => 2)
+            }
           )
           @function = @profile.function
         end
@@ -78,10 +111,13 @@ describe Profile do
 
       context 'changes with length > 0' do
         before :all do
-          @profile = Profile.new(-20,
-            -5 => LinearChange.new(:end_value => 3, :length => 2),
-            0 => LinearChange.new(:end_value => 1, :length => 1),
-            5 => SigmoidChange.new(:end_value => -10, :length => 2.5),
+          @profile = Profile.new(
+            :start_value => -20,
+            :changes => {
+              -5 => LinearChange.new(:end_value => 3, :length => 2),
+              0 => LinearChange.new(:end_value => 1, :length => 1),
+              5 => SigmoidChange.new(:end_value => -10, :length => 2.5),
+            }
           )
           @function = @profile.function
         end

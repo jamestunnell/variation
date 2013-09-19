@@ -18,34 +18,27 @@ A variety of transitions:
 == Examples
 
   require 'variation'
+  include Variation
 
-  # Various ways to make the same profile
-
-  using_new = Profile.new(
-    1,				# start at 1
-    Hold.new(2)	    # hold at 1 for 2
-    Jump.new(3),    # jump to 3 (immediately)
-    Curve.new(4,2), # curve to 4 for 2
-    Line.new(1,1),	# line to 1 for 1
-    Hold.new(2) 	# hold at 1 for 2
+  p = Profile.new(
+    :start_value => 1,
+    :changes => {
+      3 => ImmediateChange.new(:end_value => 3),
+      5 => SigmoidChange.new(:end_value => 4, :length => 2),
+      6 => LinearChange.new(:end_value => 1, :length => 1)
+    }
   )
 
-  using_blk = Profile.new(1) do |profile|
-    profile.hold_for(2)
-    profile.jump_to(3)
-    profile.curve_to(4,2)
-    profile.line_to(1,1)
-    profile.hold_for(2)
-  end
-
-  using_dsl = profile do
-    starts at(1)
-    holds for(2)
-    jumps to(3)
-    curves to(4) for(2)
-    lines to(1) for(1)
-    holds for(2)
-  end
+  # generate a function to calculate profile values
+  f = p.function
+  f.call(0) # should return 1
+  f.call(3 - 1e-5) # should return 1
+  f.call(3) # should return 3
+  f.call(4) # should return 3.5
+  f.call(5) # should return 4
+  f.call(5.5) # should return 2.5
+  f.call(6) # should return 1
+  f.call(99) # should return 1
 
 == Requirements
 

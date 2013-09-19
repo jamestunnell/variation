@@ -1,6 +1,32 @@
 require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
 
 describe SigmoidChange do
+  describe '.new' do  
+    context 'empty hash given' do
+      it 'should raise HashedArgMissingError' do
+        expect { SigmoidChange.new({}) }.to raise_error(HashedArgMissingError)
+      end
+    end
+
+    context ':length only given' do
+      it 'should raise HashedArgMissingError' do
+        expect { SigmoidChange.new(:length => 2) }.to raise_error(HashedArgMissingError)
+      end
+    end
+
+    context ':end_value only given' do
+      it 'should raise HashedArgMissingError' do
+        expect { SigmoidChange.new(:end_value => 1) }.to raise_error(HashedArgMissingError)
+      end
+    end
+
+    context ':length and :end_value given' do
+      it 'should raise HashedArgMissingError' do
+        expect { SigmoidChange.new(:end_value => 1, :length => 2) }.to_not raise_error
+      end
+    end
+  end
+
   describe '#transition_function' do
     it 'should return a Proc with arity of 1' do
       SigmoidChange.new(:end_value => 1, :length => 1).transition_function([0,0]).arity.should eq(1)

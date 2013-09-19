@@ -5,10 +5,14 @@ class Profile
 
   attr_reader :start_value, :changes
 
-  def initialize start_value, changes = {}
-    @start_value = start_value    
-    trim_changes_if_needed changes
+  def initialize hashed_args
+    raise HashedArgMissingError unless hashed_args.has_key?(:start_value)
+    changes = hashed_args[:changes] || {}
+
+    @start_value = hashed_args[:start_value]
     @changes = changes
+    
+    trim_changes_if_needed @changes
   end
 
   def length
